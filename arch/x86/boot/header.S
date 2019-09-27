@@ -53,7 +53,7 @@ bootsect_start:
 	# Normalize the start address
 	ljmp	$BOOTSEG, $start2	/*该指令表示转移到段基址为0x7C00（seg*16），偏移为start2地址处*/
 
-start2:
+start2:			#不执行，兼容old，提示info按键重启
 	movw	%cs, %ax
 	movw	%ax, %ds
 	movw	%ax, %es
@@ -114,8 +114,8 @@ _start:
 		# Explicitly enter this as bytes, or the assembler
 		# tries to generate a 3-byte jump here, which causes
 		# everything else to push off to the wrong offset.
-		.byte	0xeb		# short (2-byte) jump
-		.byte	start_of_setup-1f
+		.byte	0xeb		# short (2-byte) jump 	/*此处为了生成2位转跳直接使用的机器码命令，转跳至start_of_setup */
+		.byte	start_of_setup-1f 					/*start_of_setup-1 的偏移量，f指向前forward b是会跳backward */
 1:
 
 	# Part 2 of the header, from the old setup.S
@@ -256,34 +256,34 @@ start_of_setup:
 	movw	%ss, %dx
 	cmpw	%ax, %dx	# %ds == %ss?
 	movw	%sp, %dx
-	je	2f		# -> assume %sp is reasonably set
+	je	2f		# -> assume %sp is reasonably set 相等就转跳2
 
-	# Invalid %ss, make up a new stack
-	movw	$_end, %dx
+	# Invalid %ss, make up a new stack 新建栈
+	movw	$_end, %dx			#_end <= 0x8000 end address of Kernel setup	
 	testb	$CAN_USE_HEAP, loadflags
 	jz	1f
 	movw	heap_end_ptr, %dx
-1:	addw	$STACK_SIZE, %dx
+1:	addw	$STACK_SIZE, %dx	# 栈大小
 	jnc	2f
 	xorw	%dx, %dx	# Prevent wraparound
 
 2:	# Now %dx should point to the end of our stack space
-	andw	$~3, %dx	# dword align (might as well...)
+	andw	$~3, %dx	# dword align (might as well...) 最低两位清零
 	jnz	3f
-	movw	$0xfffc, %dx	# Make sure we're not zero
+	movw	$0xfffc, %dx	# Make sure we re not zero
 3:	movw	%ax, %ss
-	movzwl	%dx, %esp	# Clear upper half of %esp
-	sti			# Now we should have a working stack
+	movzwl	%dx, %esp	# Clear upper half of %esp 栈头指向栈底 栈建立完成
+	sti			# Now we should have a working stack   开中断
 
 # We will have entered with %cs = %ds+0x20, normalize %cs so
 # it is on par with the other segments.
 	pushw	%ds
 	pushw	$6f
-	lretw
+	lretw			#分别弹出至cs寄存器和eip寄存器，cs:eip指向6
 6:
 
 # Check signature at end of setup
-	cmpl	$0x5a5aaa55, setup_sig
+	cmpl	$0x5a5aaa55, setup_sig  #ld文件
 	jne	setup_bad
 
 # Zero the bss
@@ -292,7 +292,9 @@ start_of_setup:
 	xorl	%eax, %eax
 	subw	%di, %cx
 	shrw	$2, %cx
-	rep; stosl
+	rep; stosl 	
+	#带前缀的串指令rep; stosl，循环次数存放在cx寄存器中，执行一次串指令将清除4个字节的内存空间
+	#整个bss段占用的内存空间大小除以4之后的值，+3保证完全清除bss段
 
 # Jump to C code (should not return)
 	calll	main
