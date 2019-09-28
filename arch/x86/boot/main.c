@@ -34,7 +34,7 @@ static void copy_boot_params(void)
 	const struct old_cmdline * const oldcmd =
 		(const struct old_cmdline *)OLD_CL_ADDRESS;
 
-	BUILD_BUG_ON(sizeof boot_params != 4096);
+	BUILD_BUG_ON(sizeof boot_params != 4096);	 	//保证boot_params = 4096 
 	memcpy(&boot_params.hdr, &hdr, sizeof hdr);
 
 	if (!boot_params.hdr.cmd_line_ptr &&
@@ -104,10 +104,10 @@ static void init_heap(void)
 
 	if (boot_params.hdr.loadflags & CAN_USE_HEAP) {
 		asm("leal %P1(%%esp),%0"
-		    : "=r" (stack_end) : "i" (-STACK_SIZE));
+		    : "=r" (stack_end) : "i" (-STACK_SIZE));	//stack_end = %esp -STACK_SIZE表示栈顶
 
 		heap_end = (char *)
-			((size_t)boot_params.hdr.heap_end_ptr + 0x200);
+			((size_t)boot_params.hdr.heap_end_ptr + 0x200);		//heap_end = _end+0x200定义了堆大小，表示堆顶
 		if (heap_end > stack_end)
 			heap_end = stack_end;
 	} else {

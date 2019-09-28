@@ -45,13 +45,13 @@ static void move_kernel_around(void)
 	u16 dst_seg, src_seg;
 	u32 syssize;
 
-	dst_seg =  0x1000 >> 4;
-	src_seg = 0x10000 >> 4;
+	dst_seg =  0x1000 >> 4;		//0x100
+	src_seg = 0x10000 >> 4;		//0x1000
 	syssize = boot_params.hdr.syssize; /* Size in 16-byte paragraphs */
 
 	while (syssize) {
-		int paras  = (syssize >= 0x1000) ? 0x1000 : syssize;
-		int dwords = paras << 2;
+		int paras  = (syssize >= 0x1000) ? 0x1000 : syssize;	//0x1000
+		int dwords = paras << 2;								//10000000000b
 
 		asm volatile("pushw %%es ; "
 			     "pushw %%ds ; "
@@ -131,7 +131,7 @@ static void setup_gdt(void)
 	static struct gdt_ptr gdt;
 
 	gdt.len = sizeof(boot_gdt)-1;
-	gdt.ptr = (u32)&boot_gdt + (ds() << 4);
+	gdt.ptr = (u32)&boot_gdt + (ds() << 4);		//ds<<4+boot_gdt地址
 
 	asm volatile("lgdtl %0" : : "m" (gdt));
 }
@@ -142,7 +142,7 @@ static void setup_gdt(void)
 static void setup_idt(void)
 {
 	static const struct gdt_ptr null_idt = {0, 0};
-	asm volatile("lidtl %0" : : "m" (null_idt));
+	asm volatile("lidtl %0" : : "m" (null_idt));		//将内存null_idt加载到IDT 0
 }
 
 /*
@@ -169,8 +169,8 @@ void go_to_protected_mode(void)
 	mask_all_interrupts();
 
 	/* Actual transition to protected mode... */
-	setup_idt();
+	setup_idt();			//中断描述表
 	setup_gdt();
-	protected_mode_jump(boot_params.hdr.code32_start,
+	protected_mode_jump(boot_params.hdr.code32_start,		//start address for 32-bit code = 0x1000/0x100000 = default for zImage/bzImage
 			    (u32)&boot_params + (ds() << 4));
 }
